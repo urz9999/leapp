@@ -7,4 +7,5 @@ export interface Session {
   active: boolean;
   loading: boolean;
   account: Account;
+  webProfile?: string;
 }
