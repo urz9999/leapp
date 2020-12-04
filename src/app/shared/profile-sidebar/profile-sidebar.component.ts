@@ -61,7 +61,7 @@ export class ProfileSidebarComponent extends AntiMemLeak implements OnInit {
     workspace.azureProfile = null;
     workspace.azureConfig = null;
     this.configurationService.updateWorkspaceSync(workspace);
-    this.executeService.execute('az account clear 2>&1').subscribe(res => {}, err => {});
+    this.subs.add(this.executeService.execute('az account clear 2>&1').subscribe(res => {}, err => {}));
   }
 
   /**

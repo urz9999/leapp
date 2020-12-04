@@ -12,7 +12,7 @@ import {RefreshCredentialsStrategy} from './refreshCredentialsStrategy';
 import {TimerService} from '../services/timer-service';
 import {Workspace} from '../models/workspace';
 import {WorkspaceService} from '../services/workspace.service';
-import {Observable} from 'rxjs';
+import {Observable, Subscription} from 'rxjs';
 import {constants} from '../core/enums/constants';
 import {ProxyService} from '../services/proxy.service';
 import {Session} from '../models/session';
@@ -34,6 +34,10 @@ export class AwsStrategy extends RefreshCredentialsStrategy {
     private workspaceService: WorkspaceService) {
     super();
   }
+
+  // TODO: move to KeychainService
+  private trusterAccountSubscription: Subscription;
+  private plainAccountSubscription: Subscription;
 
   getActiveSessions(workspace: Workspace) {
     const activeSessions = workspace.sessions.filter((sess) => {
@@ -71,7 +75,8 @@ export class AwsStrategy extends RefreshCredentialsStrategy {
       if (sessionTokenData && this.isSessionTokenStillValid(sessionTokenData)) {
         this.applyPlainAccountSessionToken(workspace, session);
       } else {
-        this.getPlainAccountSessionToken(credentials, session).subscribe((awsCredentials) => {
+        if (this.plainAccountSubscription !== null) { this.plainAccountSubscription.unsubscribe(); }
+        this.plainAccountSubscription = this.getPlainAccountSessionToken(credentials, session).subscribe((awsCredentials) => {
             const tmpCredentials = this.workspaceService.constructCredentialObjectFromStsResponse(awsCredentials, workspace, session.account.region);
 
             this.keychainService.saveSecret(environment.appName, `plain-account-session-token-${session.account.accountName}`, JSON.stringify(tmpCredentials));
@@ -164,7 +169,6 @@ export class AwsStrategy extends RefreshCredentialsStrategy {
     });
   }
 
-  // TODO: move to KeychainService
   private async getIamUserAccessKeysFromKeychain(session) {
     const accessKey = await this.keychainService.getSecret(environment.appName, this.appService.keychainGenerateAccessString(session.account.accountName, (session.account as AwsPlainAccount).user));
     const secretKey = await this.keychainService.getSecret(environment.appName, this.appService.keychainGenerateSecretString(session.account.accountName, (session.account as AwsPlainAccount).user));
@@ -215,7 +219,8 @@ export class AwsStrategy extends RefreshCredentialsStrategy {
       };
 
       const processData = (p) => {
-        this.getTrusterAccountSessionToken(credentials, parentSession, session).subscribe((awsCredentials) => {
+        if (this.trusterAccountSubscription !== null) { this.trusterAccountSubscription.unsubscribe(); }
+        this.trusterAccountSubscription = this.getTrusterAccountSessionToken(credentials, parentSession, session).subscribe((awsCredentials) => {
             // Update AWS sdk with new credentials
             AWS.config.update({
               accessKeyId: awsCredentials.default.aws_access_key_id,
