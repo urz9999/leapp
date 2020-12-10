@@ -15,8 +15,11 @@ import {constants} from '../core/enums/constants';
 })
 export class AppService extends NativeService {
 
+  newWin;
+
   isResuming: EventEmitter<boolean> = new EventEmitter<boolean>();
   profileOpen: EventEmitter<boolean> = new EventEmitter<boolean>();
+  // TODO Why redrawList??
   redrawList: EventEmitter<boolean> = new EventEmitter<boolean>();
 
   stsEndpointsPerRegion = new Map([
@@ -58,6 +61,22 @@ export class AppService extends NativeService {
    */
   getApp() {
     return this.app;
+  }
+
+  getMenu() {
+    return this.Menu;
+  }
+
+  getTray() {
+    return this.Tray;
+  }
+
+  getCurrentWindow() {
+    return this.currentWindow;
+  }
+
+  getFollowRedirects() {
+    return this.followRedirects;
   }
 
   /**
@@ -226,8 +245,15 @@ export class AppService extends NativeService {
         y: y + 50
       });
     }
-    const newWin = new this.browserWindow(opts);
-    return newWin;
+
+    if (this.newWin) {
+      this.newWin.close();
+    }
+    this.newWin = new this.browserWindow(opts);
+    this.newWin.on('closed', () => {
+      this.newWin = null;
+    });
+    return this.newWin;
   }
 
   /**
@@ -455,6 +481,8 @@ export class AppService extends NativeService {
    */
   isAzure(s) { return s.account.subscriptionId !== null && s.account.subscriptionId !== undefined; }
 
+
+  // TODO MOVE TO KEYCHAIN SERVICE
   /**
    * Generate Secret String for keychain
    * @param accountName - account ame we want to use
@@ -473,6 +501,7 @@ export class AppService extends NativeService {
     return `${accountName}___${user}___accessKey`;
   }
 
+  // TODO REMOVE
   /**
    * Set the hook email based on response type
    * Now is not used but it can be very useful and we

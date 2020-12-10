@@ -9,6 +9,7 @@ import {TrusterAccountService} from './truster-account.service';
 import {AzureAccountService} from './azure-account.service';
 import {Router} from '@angular/router';
 import {Session} from '../models/session';
+import {Subscription} from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -21,6 +22,7 @@ export class ProviderManagerService {
   selectedSession;
   selectedRole;
   selectedRegion;
+  private googleSubscription: Subscription;
 
   /**
    * Used to manage all the choices done in the app regarding the correct provider to use:
@@ -75,6 +77,8 @@ export class ProviderManagerService {
    * @param selectedRegion - the region to select for aws
    * @param form - the form to use
    */
+
+  // TODO: Why we need to save configurations and create the workspace here? it should be done invoked in the start screen and
   saveFirstAccount(accountId, accountType, selectedSession: Session, selectedRole, selectedRegion, form) {
     // Set our variable to avoid sending them to all methods;
     // besides the scope of this service is to manage saving and editing
@@ -86,21 +90,26 @@ export class ProviderManagerService {
     this.selectedRegion = selectedRegion;
     this.form = form;
 
+    // TODO: ?? Why I need to call Google?
     // Before we need to save the first workspace and call google: this is done only the first time so it is not used in other classes
     // Now we get the default configuration to obtain the previously saved idp url
     const configuration = this.configurationService.getConfigurationFileSync();
 
+    // TODO: WHy SAML is essential?
     // Set our response type
     const responseType = IdpResponseType.SAML;
 
     // Update Configuration
     if (accountType === AccountType.AWS) {
+
+      // TODO: What I am updating?
       this.configurationService.updateConfigurationFileSync(configuration);
 
       const federationUrl = form.value.federationUrl;
 
       // When the token is received save it and go to the setup page for the first account
-      this.workspaceService.googleEmit.subscribe((googleToken) => this.ngZone.run(() => {
+      if (this.googleSubscription) { this.googleSubscription.unsubscribe(); }
+      this.googleSubscription = this.workspaceService.googleEmit.subscribe((googleToken) => this.ngZone.run(() => {
         this.createNewWorkspace(googleToken, federationUrl, responseType);
         this.appService.logger(`Saving first account with a federated account (already done google token emit)`, LoggerLevel.INFO, this);
       }));
@@ -159,6 +168,7 @@ export class ProviderManagerService {
   /**
    * When the data from Google is received, generate a new workspace or check errors, etc.
    */
+  // TODO: Why there are 2 createNewWorkspace functions?
   createNewWorkspace(googleToken, federationUrl, responseType) {
     const name = 'default';
     const result = this.workspaceService.createNewWorkspace(googleToken, federationUrl, name, responseType);

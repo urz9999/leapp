@@ -1,23 +1,23 @@
-import {Component, ElementRef, Input, OnInit, ViewChild} from '@angular/core';
+import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {FormControl, FormGroup, Validators} from '@angular/forms';
 import {ConfigurationService} from '../../services-system/configuration.service';
 import {AppService} from '../../services-system/app.service';
 import {ActivatedRoute, Router} from '@angular/router';
 import {Workspace} from '../../models/workspace';
-import {AwsAccount} from '../../models/aws-account';
 import {ProviderManagerService} from '../../services/provider-manager.service';
 import {AccountType} from '../../models/AccountType';
 import {Session} from '../../models/session';
 import {AwsPlainAccount} from '../../models/aws-plain-account';
 import {KeychainService} from '../../services-system/keychain.service';
 import {environment} from '../../../environments/environment';
+import {AntiMemLeak} from '../../core/anti-mem-leak';
 
 @Component({
   selector: 'app-edit-account',
   templateUrl: './edit-account.component.html',
   styleUrls: ['./edit-account.component.scss']
 })
-export class EditAccountComponent implements OnInit {
+export class EditAccountComponent extends AntiMemLeak implements OnInit {
   accountType = AccountType.AWS_PLAIN_USER;
   provider = AccountType.AWS;
   selectedSession: Session;
@@ -49,10 +49,10 @@ export class EditAccountComponent implements OnInit {
     private activatedRoute: ActivatedRoute,
     private providerManagerService: ProviderManagerService,
     private keychainService: KeychainService
-  ) {}
+  ) { super(); }
 
   ngOnInit() {
-    this.activatedRoute.queryParams.subscribe(params => {
+    this.subs.add(this.activatedRoute.queryParams.subscribe(params => {
       // Get the workspace and the account you need
       this.workspace = this.configurationService.getDefaultWorkspaceSync();
       this.selectedSession = this.workspace.sessions.filter(session => session.id === params.sessionId)[0];
@@ -69,14 +69,9 @@ export class EditAccountComponent implements OnInit {
       this.form.controls['plainUser'].setValue(selectedAccount.user);
       this.form.controls['mfaDevice'].setValue(selectedAccount.mfaDevice);
 
-      // Get the secrets
-      this.keychainService.getSecret(environment.appName, this.appService.keychainGenerateAccessString(selectedAccount.accountName, (selectedAccount as AwsPlainAccount).user)).then(access => {
-        this.keychainService.getSecret(environment.appName, this.appService.keychainGenerateSecretString(selectedAccount.accountName, (selectedAccount as AwsPlainAccount).user)).then(secret => {
-          this.form.controls['accessKey'].setValue(access);
-          this.form.controls['secretKey'].setValue(secret);
-        });
-      });
-    });
+      this.keychainService.getSecret(environment.appName, this.appService.keychainGenerateAccessString(selectedAccount.accountName, (selectedAccount as AwsPlainAccount).user)).subscribe((accessKey) => this.form.controls['accessKey'].setValue(accessKey));
+      this.keychainService.getSecret(environment.appName, this.appService.keychainGenerateSecretString(selectedAccount.accountName, (selectedAccount as AwsPlainAccount).user)).subscribe((secretKey) => this.form.controls['secretKey'].setValue(secretKey));
+    }));
   }
 
   /**

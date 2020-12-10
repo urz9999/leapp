@@ -17,6 +17,7 @@ import {constants} from '../core/enums/constants';
 import {ProxyService} from '../services/proxy.service';
 import {Session} from '../models/session';
 
+
 // Import AWS node style
 const AWS = require('aws-sdk');
 
@@ -75,7 +76,7 @@ export class AwsStrategy extends RefreshCredentialsStrategy {
       if (sessionTokenData && this.isSessionTokenStillValid(sessionTokenData)) {
         this.applyPlainAccountSessionToken(workspace, session);
       } else {
-        if (this.plainAccountSubscription !== null) { this.plainAccountSubscription.unsubscribe(); }
+        if (this.plainAccountSubscription !== undefined) { this.plainAccountSubscription.unsubscribe(); }
         this.plainAccountSubscription = this.getPlainAccountSessionToken(credentials, session).subscribe((awsCredentials) => {
             const tmpCredentials = this.workspaceService.constructCredentialObjectFromStsResponse(awsCredentials, workspace, session.account.region);
 
@@ -219,7 +220,7 @@ export class AwsStrategy extends RefreshCredentialsStrategy {
       };
 
       const processData = (p) => {
-        if (this.trusterAccountSubscription !== null) { this.trusterAccountSubscription.unsubscribe(); }
+        if (this.trusterAccountSubscription !== undefined) { this.trusterAccountSubscription.unsubscribe(); }
         this.trusterAccountSubscription = this.getTrusterAccountSessionToken(credentials, parentSession, session).subscribe((awsCredentials) => {
             // Update AWS sdk with new credentials
             AWS.config.update({

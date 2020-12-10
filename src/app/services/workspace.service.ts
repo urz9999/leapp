@@ -5,7 +5,7 @@ import {NativeService} from '../services-system/native-service';
 import {ConfigurationService} from '../services-system/configuration.service';
 import {AwsCredential, AwsCredentials} from '../models/credential';
 import {Workspace} from '../models/workspace';
-import {Observable} from 'rxjs';
+import {Observable, Subscription} from 'rxjs';
 import {AwsAccount} from '../models/aws-account';
 import {Session} from '../models/session';
 import {FileService} from '../services-system/file.service';
@@ -48,6 +48,7 @@ export class WorkspaceService extends NativeService {
 
   // Credential refreshed
   public credentialEmit: EventEmitter<{status: string, accountName: string}> = new EventEmitter<{status: string, accountName: string}>();
+  private checkSubscription: Subscription;
 
   constructor(
     private httpClient: HttpClient,
@@ -72,7 +73,8 @@ export class WorkspaceService extends NativeService {
    * @param callbackUrl - the callback url that can be given always by the backend in case is missing we setup a default one
    */
   getIdpToken(idpUrl: string, session: any, type: string, callbackUrl?: string) {
-    this.checkForShowingTheLoginWindow(idpUrl).subscribe((res) => {
+    if (this.checkSubscription !== undefined) { this.checkSubscription.unsubscribe(); }
+    this.checkSubscription = this.checkForShowingTheLoginWindow(idpUrl).subscribe((res) => {
       if (this.idpWindow === undefined || this.idpWindow === null) {
         // We generate a new browser window to host for the Idp Login form
         // Note: this is due to the fact that electron + angular gives problem with embedded webview
@@ -80,6 +82,7 @@ export class WorkspaceService extends NativeService {
         try {
           this.idpWindow.close();
         } catch (err) {}
+        this.idpWindow = null;
         this.idpWindow = this.appService.newWindow(idpUrl, res, 'IDP - Login', pos[0] + 200, pos[1] + 50);
       }
 
@@ -93,7 +96,6 @@ export class WorkspaceService extends NativeService {
       this.idpWindow.webContents.session.webRequest.onBeforeRequest(filter, (details, callback) => {
         this.idpResponseHook(details, type, idpUrl, session, callback);
       });
-
       this.idpWindow.loadURL(idpUrl);
 
     }, err => {
@@ -123,6 +125,7 @@ export class WorkspaceService extends NativeService {
     // We generate a new browser window to host for the Idp Login form
     // Note: this is due to the fact that electron + angular gives problem with embedded webview
     const pos = this.currentWindow.getPosition();
+    this.idpWindow = null;
     this.idpWindow = this.appService.newWindow(idpUrl, true, 'IDP - Login', pos[0] + 200, pos[1] + 50);
 
     this.proxyService.configureBrowserWindow(this.idpWindow);
@@ -171,7 +174,7 @@ export class WorkspaceService extends NativeService {
         try {
           this.idpWindow.close();
         } catch (err) {}
-
+        this.idpWindow = null;
         this.idpWindow = this.appService.newWindow(url, false, 'IDP - Login', pos[0] + 200, pos[1] + 50);
       } else {
         // We generate a new browser window to host for the Idp Login form
@@ -264,6 +267,7 @@ export class WorkspaceService extends NativeService {
 
     // Close Idp Window and emit a specific event for the page that subscribe
     // to this specific reduced version of the get credentials method
+    // TODO: I am calling the providerManagerService?
     this.googleEmit.emit(token);
     this.idpWindow.close();
 
@@ -426,6 +430,7 @@ export class WorkspaceService extends NativeService {
 
             this.configurationService.updateWorkspaceSync(workspace);
             this.configurationService.disableLoadingWhenReady(workspace, session);
+
             // Emit ok for double jump
             this.credentialEmit.emit({status: 'ok', accountName: account.accountName});
           }
@@ -482,6 +487,7 @@ export class WorkspaceService extends NativeService {
 
   createNewWorkspace(googleToken: string, federationUrl: string, name: string, responseType: string) {
     try {
+      // TODO why we need a google token to create a workspace??
       // Create a standard workspace to use as default
       const workspace: Workspace = {
         type: responseType,

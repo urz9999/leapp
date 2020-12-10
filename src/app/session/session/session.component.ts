@@ -12,6 +12,8 @@ import {FileService} from '../../services-system/file.service';
 import {CredentialsService} from '../../services/credentials.service';
 import {SessionService} from '../../services/session.service';
 import {MenuService} from '../../services/menu.service';
+import {IntegrationsService} from '../../integrations/integrations.service';
+import {AwsSsoService} from '../../integrations/providers/aws-sso.service';
 
 @Component({
   selector: 'app-session',

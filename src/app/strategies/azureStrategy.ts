@@ -59,7 +59,7 @@ export class AzureStrategy extends RefreshCredentialsStrategy {
         this.azureSetSubscription(session);
       } else {
         // 2b) First time playing with Azure credentials
-        if (this.executeSubscription !== null) { this.executeSubscription.unsubscribe(); }
+        if (this.executeSubscription !== undefined) { this.executeSubscription.unsubscribe(); }
         this.executeSubscription = this.executeService.execute(`az login --tenant ${(session.account as AzureAccount).tenantId} 2>&1`).subscribe(res => {
 
           this.azureSetSubscription(session);
@@ -70,7 +70,7 @@ export class AzureStrategy extends RefreshCredentialsStrategy {
       }
     } else {
       // First time playing with Azure credentials
-      if (this.executeSubscription !== null) { this.executeSubscription.unsubscribe(); }
+      if (this.executeSubscription !== undefined) { this.executeSubscription.unsubscribe(); }
       this.executeSubscription = this.executeService.execute(`az login --tenant ${(session.account as AzureAccount).tenantId} 2>&1`).subscribe(res => {
 
         this.azureSetSubscription(session);
@@ -94,14 +94,14 @@ export class AzureStrategy extends RefreshCredentialsStrategy {
 
       this.configurationService.updateWorkspaceSync(workspace);
     }
-    if (this.executeSubscription !== null) { this.executeSubscription.unsubscribe(); }
+    if (this.executeSubscription !== undefined) { this.executeSubscription.unsubscribe(); }
     this.executeSubscription = this.executeService.execute('az account clear 2>&1').subscribe(res => {}, err => {});
   }
 
   private azureSetSubscription(session: Session) {
     const workspace = this.configurationService.getDefaultWorkspaceSync();
     // We can use Json in res to save account information
-    if (this.executeSubscription !== null) { this.executeSubscription.unsubscribe(); }
+    if (this.executeSubscription !== undefined) { this.executeSubscription.unsubscribe(); }
     this.executeSubscription = this.executeService.execute(`az account set --subscription ${(session.account as AzureAccount).subscriptionId} 2>&1`).subscribe(acc => {
       // be sure to save the profile and tokens
       workspace.azureProfile = this.configurationService.getAzureProfileSync();
