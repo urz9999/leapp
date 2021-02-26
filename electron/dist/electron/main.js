@@ -95,7 +95,9 @@ var generateMainWindow = function () {
         // Open the dev tools only if not in production
         if (!environment_1.environment.production) {
             // Open web tools for diagnostics
-            win.webContents.once('dom-ready', function () { });
+            win.webContents.once('dom-ready', function () {
+                win.webContents.openDevTools();
+            });
         }
         win.on('close', function (event) {
             event.preventDefault();
